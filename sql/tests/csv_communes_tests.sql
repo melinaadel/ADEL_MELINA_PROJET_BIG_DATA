@@ -1,5 +1,6 @@
 -- Tests Silver : silver.csv_communes (a executer dans Adminer ou psql).
 -- Pour chaque test : coller la requete, le resultat obtenu et votre interpretation dans le rapport.
+-- Rappel : en Bronze, les colonnes du CSV sont dans la colonne jsonb _airbyte_data.
 
 -- TEST 1 - Cle non nulle. Attendu : 0
 SELECT COUNT(*) AS cles_nulles
@@ -14,11 +15,11 @@ HAVING COUNT(*) > 1;
 
 -- TEST 3 - Doublons : quantifies en Bronze, nuls en Silver. Attendu : silver = 0
 SELECT
-  (SELECT COUNT(*) - COUNT(DISTINCT NULLIF(TRIM(CAST(code_insee AS text)), ''))
+  (SELECT COUNT(*) - COUNT(DISTINCT NULLIF(TRIM(_airbyte_data ->> 'code_insee'), ''))
      FROM bronze.csv_communes
-    WHERE NULLIF(TRIM(CAST(code_insee AS text)), '') IS NOT NULL) AS doublons_bronze,
+    WHERE NULLIF(TRIM(_airbyte_data ->> 'code_insee'), '') IS NOT NULL) AS doublons_bronze,
   (SELECT COUNT(*) - COUNT(DISTINCT source_record_id)
-     FROM silver.csv_communes)                                       AS doublons_silver;
+     FROM silver.csv_communes)                AS doublons_silver;
 
 -- TEST 4 - Nommage snake_case. Attendu : 0 ligne
 SELECT column_name
@@ -38,7 +39,7 @@ SELECT
   (SELECT COUNT(*) FROM bronze.csv_communes) AS bronze_rows,
   (SELECT COUNT(*) FROM silver.csv_communes) AS silver_rows,
   (SELECT COUNT(*) FROM bronze.csv_communes
-    WHERE NULLIF(TRIM(CAST(code_insee AS text)), '') IS NULL) AS lignes_sans_cle,
+    WHERE NULLIF(TRIM(_airbyte_data ->> 'code_insee'), '') IS NULL) AS lignes_sans_cle,
   (SELECT COUNT(*) FROM bronze.csv_communes) - (SELECT COUNT(*) FROM silver.csv_communes) AS ecart;
 
 -- TEST 7 - Tracabilite. Attendu : 0, 0, 0
@@ -59,5 +60,5 @@ FROM silver.csv_communes;
 -- TEST 8b - Valeurs non vides en Bronze qui n'ont pas pu etre converties en nombre. Attendu : 0
 SELECT COUNT(*) AS population_non_convertie
 FROM bronze.csv_communes b
-WHERE NULLIF(TRIM(CAST(b.population AS text)), '') IS NOT NULL
-  AND NULLIF(TRIM(CAST(b.population AS text)), '') !~ '^-?[0-9]+$';
+WHERE NULLIF(TRIM(_airbyte_data ->> 'population'), '') IS NOT NULL
+  AND NULLIF(TRIM(_airbyte_data ->> 'population'), '') !~ '^-?[0-9]+$';

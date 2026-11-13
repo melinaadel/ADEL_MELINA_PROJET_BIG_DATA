@@ -1,0 +1,107 @@
+ cles_nulles 
+-------------
+           0
+(1 row)
+
+ source_record_id | n 
+------------------+---
+(0 rows)
+
+ doublons_bronze | doublons_silver 
+-----------------+-----------------
+               0 |               0
+(1 row)
+
+ column_name 
+-------------
+(0 rows)
+
+              column_name              |        data_type         
+---------------------------------------+--------------------------
+ code_insee                            | text
+ nom_standard                          | text
+ nom_sans_pronom                       | text
+ nom_a                                 | text
+ nom_de                                | text
+ nom_sans_accent                       | text
+ nom_standard_majuscule                | text
+ typecom                               | text
+ typecom_texte                         | text
+ reg_code                              | text
+ reg_nom                               | text
+ dep_code                              | text
+ dep_nom                               | text
+ canton_code                           | text
+ canton_nom                            | text
+ epci_code                             | text
+ epci_nom                              | text
+ code_postal                           | text
+ codes_postaux                         | text
+ academie_code                         | text
+ academie_nom                          | text
+ zone_emploi                           | text
+ zone_emploi_nom                       | text
+ code_insee_centre_zone_emploi         | text
+ code_unite_urbaine                    | text
+ nom_unite_urbaine                     | text
+ taille_unite_urbaine                  | integer
+ type_commune_unite_urbaine            | text
+ statut_commune_unite_urbaine          | text
+ code_aire_attraction                  | text
+ nom_aire_attraction                   | text
+ categorie_aire_attraction             | integer
+ taille_aire_attraction                | integer
+ code_insee_centre_aire_attraction     | text
+ code_bassin_de_vie                    | text
+ nom_bassin_de_vie                     | text
+ type_bassin_de_vie                    | integer
+ population                            | integer
+ superficie_hectare                    | numeric
+ superficie_km2                        | numeric
+ densite                               | numeric
+ superficie_cartographique_ign_hectare | numeric
+ superficie_cartographique_ign_km2     | numeric
+ densite_cartographique                | numeric
+ superficie_cadastrale_ign_hectare     | numeric
+ superficie_cadastrale_ign_km2         | numeric
+ densite_cadastrale                    | numeric
+ altitude_moyenne                      | numeric
+ altitude_minimale                     | numeric
+ altitude_maximale                     | numeric
+ latitude_mairie                       | numeric
+ longitude_mairie                      | numeric
+ latitude_centre                       | numeric
+ longitude_centre                      | numeric
+ grille_densite                        | integer
+ grille_densite_texte                  | text
+ niveau_equipements_services           | integer
+ niveau_equipements_services_texte     | text
+ qpv_nombre                            | integer
+ gentile                               | text
+ url_wikipedia                         | text
+ url_villedereve                       | text
+ source_system                         | text
+ source_record_id                      | text
+ ingested_at_utc                       | timestamp with time zone
+(65 rows)
+
+ bronze_rows | silver_rows | lignes_sans_cle | ecart 
+-------------+-------------+-----------------+-------
+       34868 |       34868 |               0 |     0
+(1 row)
+
+ source_system_null | source_record_id_null | ingested_at_null 
+--------------------+-----------------------+------------------
+                  0 |                     0 |                0
+(1 row)
+
+ code_insee_format_invalide | population_negative | latitude_hors_plage | longitude_hors_plage 
+----------------------------+---------------------+---------------------+----------------------
+                          0 |                   0 |                   0 |                    0
+(1 row)
+
+ population_non_convertie 
+--------------------------
+                        0
+(1 row)
+
