@@ -1,0 +1,131 @@
+name: dsid-bigdata-project
+
+services:
+  postgres:
+    image: postgres:18.6
+    container_name: dsid-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+      - ./init/postgres:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [dsid]
+
+  mariadb:
+    image: mariadb:11.8.9
+    container_name: dsid-mariadb
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: ${MARIADB_DATABASE}
+      MARIADB_USER: ${MARIADB_USER}
+      MARIADB_PASSWORD: ${MARIADB_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
+      AIRBYTE_MARIADB_PASSWORD: ${AIRBYTE_MARIADB_PASSWORD}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+      - ./init/mariadb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 10s
+      retries: 15
+      start_period: 20s
+    networks: [dsid]
+
+  espocrm:
+    image: espocrm/espocrm:10.0.8
+    container_name: dsid-espocrm
+    restart: unless-stopped
+    environment:
+      ESPOCRM_DATABASE_HOST: mariadb
+      ESPOCRM_DATABASE_NAME: ${MARIADB_DATABASE}
+      ESPOCRM_DATABASE_USER: ${MARIADB_USER}
+      ESPOCRM_DATABASE_PASSWORD: ${MARIADB_PASSWORD}
+      ESPOCRM_ADMIN_USERNAME: ${ESPOCRM_ADMIN_USERNAME}
+      ESPOCRM_ADMIN_PASSWORD: ${ESPOCRM_ADMIN_PASSWORD}
+      ESPOCRM_SITE_URL: http://localhost:8081
+    ports:
+      - "8081:80"
+    volumes:
+      - espocrm_data:/var/www/html/data
+      - espocrm_custom:/var/www/html/custom
+      - espocrm_custom_client:/var/www/html/client/custom
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "bin/command", "app-check"]
+      interval: 30s
+      timeout: 20s
+      retries: 10
+      start_period: 45s
+    networks: [dsid]
+
+  espocrm-daemon:
+    image: espocrm/espocrm:10.0.8
+    container_name: dsid-espocrm-daemon
+    restart: unless-stopped
+    volumes_from:
+      - espocrm
+    entrypoint: docker-daemon.sh
+    depends_on:
+      espocrm:
+        condition: service_healthy
+    networks: [dsid]
+
+  minio:
+    build:
+      context: .
+      dockerfile: Dockerfile.minio
+      args:
+        MINIO_VERSION: RELEASE.2025-10-15T17-29-55Z
+    image: dsid/minio:RELEASE.2025-10-15T17-29-55Z
+    container_name: dsid-minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    command: ["server", "/data", "--console-address", ":9001"]
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    networks: [dsid]
+
+  adminer:
+    image: adminer:6.1.0
+    container_name: dsid-adminer
+    restart: unless-stopped
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+    ports:
+      - "8082:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [dsid]
+
+networks:
+  dsid:
+    name: dsid-bigdata-network
+
+volumes:
+  postgres_data:
+  mariadb_data:
+  espocrm_data:
+  espocrm_custom:
+  espocrm_custom_client:
+  minio_data:
