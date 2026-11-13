@@ -1,0 +1,5 @@
+bucket,object_key,size_bytes,last_modified_utc,sha256
+dsid-raw,raw/api/frankfurter/frankfurter_api/2026_11_13_1794580461857_0.jsonl,5168,2026-11-13T14:34:22Z,b656cf2361561e5ef473b1ef0b7e2d46af09b5cab2a9c8c8d3711c7008300c20
+dsid-raw,raw/csv/communes/communes_france/2026_11_13_1794593861115_0.jsonl,42388159,2026-11-13T18:18:04Z,3a30479f913739a544d53753f9ef403c3f5a67e449e96f38a943765ccc6d3e6d
+dsid-raw,raw/csv/communes/communes_france/2026_11_13_1794593861115_1.jsonl,31496312,2026-11-13T18:18:05Z,52f4c44b57213192fe5f7a8c6c345dff8ca2d25bbb7b48012efac22903b95bf7
+dsid-raw,raw/originaux/csv_communes/2026-11-13_communes_france.csv,21344470,2026-11-13T19:42:13Z,f15a1dffa3105d267a4aaa4e3e7b161fea485187a6726bdf59247a94c70552e6
