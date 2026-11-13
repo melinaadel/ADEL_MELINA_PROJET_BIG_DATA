@@ -1,4 +1,3 @@
-cd /workspaces/ADEL_MELINA_PROJET_BIG_DATA && docker exec -i dsid-postgres psql -U warehouse -d warehouse -v ON_ERROR_STOP=1 < sql/silver/crm_espocrm.sql-- Tests Silver CRM (EspoCRM) : 8 tests obligatoires pour chacune des 5 vues silver.crm_*.
 -- Pour chaque test : la requete, le resultat obtenu et l'interpretation sont repris dans le rapport.
 -- Lot de test : 1 compte, 2 contacts, 1 opportunite, 2 liens compte-contact, 2 liens contact-opportunite.
 

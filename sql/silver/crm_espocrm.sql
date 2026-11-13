@@ -5,11 +5,15 @@
 --     (id varchar, deleted boolean, created_at / modified_at timestamp sans fuseau, amount numeric,
 --      close_date date, probability bigint...) + colonnes techniques _airbyte_raw_id,
 --     _airbyte_extracted_at, _airbyte_meta, _airbyte_generation_id.
---     Mode de sync : Incremental | Append, curseur modified_at -> chaque modification d'une fiche
---     ajoute une nouvelle version en Bronze.
 --   bronze.account_contact, bronze.contact_opportunity : tables de relation (id bigint, deleted boolean).
---     Mode de sync : Full refresh | Overwrite + Deduped (cle id), car elles n'ont pas de colonne
---     de date de modification utilisable comme curseur.
+--   Modes de sync Airbyte reellement configures (connexion mariadb_espocrm_to_postgres_crm) :
+--     account, contact      : Incremental | Append, curseur modified_at
+--                             -> chaque modification d'une fiche ajoute une nouvelle version en Bronze ;
+--     opportunity           : Incremental | Append + Deduped, curseur modified_at, cle id ;
+--     account_contact       : Full refresh | Overwrite + Deduped, cle id ;
+--     contact_opportunity   : Full refresh | Overwrite.
+--     Les tables de relation n'ont pas de colonne de date utilisable comme curseur : Full refresh.
+--   La deduplication Silver ci-dessous donne le meme resultat quel que soit le mode.
 --   Bronze garde les noms physiques d'origine de MariaDB ; le prefixe de source crm_ est applique en Silver.
 --
 -- DICTIONNAIRE (Bronze -> Silver) :

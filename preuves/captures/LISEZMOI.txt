@@ -1,0 +1,13 @@
+Captures d'ecran utilisees comme preuves dans le rapport (rapport/rapport_projet_big_data.pdf).
+
+builder_21_records.png      Figure 2  - Test du connecteur Frankfurter dans le Builder Airbyte : 21 enregistrements.
+builder_fix_insert.png      Figure 12 - Correction du bug de publication du Builder (INSERT 0 1 dans la base Airbyte).
+api_to_minio_synced.png     Figure 3  - Connexion api_frankfurter_to_minio : Synced, 21 enregistrements.
+minio_objet_api.png         Figure 4  - Objet JSONL du lot API dans le bucket MinIO dsid-raw.
+s3_to_pg_api_synced.png     Figure 5  - Connexion s3_minio_to_postgres_api : 21 lignes chargees en Bronze.
+csv_to_minio_synced.png     Figure 6  - Connexion csv_communes_to_minio : 34 868 enregistrements deposes dans MinIO.
+bronze_csv_count.png        Figure 7  - Comptage dans PostgreSQL : bronze.csv_communes = 34 868 lignes.
+s3_to_pg_csv_resync.png     Figure 8  - Relance sans nouveau fichier : 0 loaded (mode incremental).
+crm_opportunity.png         Figure 9  - Fiche EspoCRM de l'opportunite, liee au compte et aux 2 contacts.
+crm_mariadb_ids.png         Figure 10 - Les 4 identifiants crees par EspoCRM, lus dans MariaDB.
+crm_connection_synced.png   Figure 11 - Connexion CRM : les 5 flux Synced (1, 2, 2, 2, 1 enregistrements).
