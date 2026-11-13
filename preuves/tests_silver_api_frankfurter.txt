@@ -1,0 +1,49 @@
+ cles_nulles 
+-------------
+           0
+(1 row)
+
+ rate_date | base_currency | quote_currency | n 
+-----------+---------------+----------------+---
+(0 rows)
+
+ doublons_bronze | doublons_silver 
+-----------------+-----------------
+               0 |               0
+(1 row)
+
+ column_name 
+-------------
+(0 rows)
+
+   column_name    |        data_type         
+------------------+--------------------------
+ rate_date        | date
+ base_currency    | text
+ quote_currency   | text
+ exchange_rate    | numeric
+ source_system    | text
+ source_record_id | text
+ ingested_at_utc  | timestamp with time zone
+(7 rows)
+
+ bronze_rows | silver_rows | ecart 
+-------------+-------------+-------
+          21 |          21 |     0
+(1 row)
+
+ source_system_null | source_record_id_null | ingested_at_null 
+--------------------+-----------------------+------------------
+                  0 |                     0 |                0
+(1 row)
+
+ taux_invalide | date_future | taux_un_week_end | base_differente_de_eur | devise_hors_perimetre 
+---------------+-------------+------------------+------------------------+-----------------------
+             0 |           0 |                0 |                      0 |                     0
+(1 row)
+
+ dates_non_converties | taux_non_convertis 
+----------------------+--------------------
+                    0 |                  0
+(1 row)
+
