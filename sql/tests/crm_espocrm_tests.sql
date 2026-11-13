@@ -1,0 +1,325 @@
+cd /workspaces/ADEL_MELINA_PROJET_BIG_DATA && docker exec -i dsid-postgres psql -U warehouse -d warehouse -v ON_ERROR_STOP=1 < sql/silver/crm_espocrm.sql-- Tests Silver CRM (EspoCRM) : 8 tests obligatoires pour chacune des 5 vues silver.crm_*.
+-- Pour chaque test : la requete, le resultat obtenu et l'interpretation sont repris dans le rapport.
+-- Lot de test : 1 compte, 2 contacts, 1 opportunite, 2 liens compte-contact, 2 liens contact-opportunite.
+
+-- ===========================================================================
+-- silver.crm_account  (source : bronze.account ; cle : account_id)
+-- ===========================================================================
+
+-- crm_account - TEST 1 - Cle non nulle. Attendu : 0
+SELECT COUNT(*) AS cles_nulles
+FROM silver.crm_account
+WHERE account_id IS NULL;
+
+-- crm_account - TEST 2 - Unicite de la cle au grain annonce. Attendu : 0 ligne
+SELECT account_id, COUNT(*) AS n
+FROM silver.crm_account
+GROUP BY account_id
+HAVING COUNT(*) > 1;
+
+-- crm_account - TEST 3 - Doublons : quantifies en Bronze, nuls en Silver. Attendu : doublons_silver = 0
+SELECT
+  (SELECT COUNT(*) - COUNT(DISTINCT NULLIF(TRIM(id), '')) FROM bronze.account WHERE NULLIF(TRIM(id), '') IS NOT NULL) AS doublons_bronze,
+  (SELECT COUNT(*) - COUNT(DISTINCT account_id) FROM silver.crm_account) AS doublons_silver;
+
+-- crm_account - TEST 4 - Nommage snake_case. Attendu : 0 ligne
+SELECT column_name
+FROM information_schema.columns
+WHERE table_schema = 'silver' AND table_name = 'crm_account'
+  AND column_name !~ '^[a-z][a-z0-9_]*$';
+
+-- crm_account - TEST 5 - Types observes (contrat : account_id, account_name... text ; is_deleted boolean ; created_at_utc / modified_at_utc / ingested_at_utc timestamp with time zone)
+SELECT column_name, data_type
+FROM information_schema.columns
+WHERE table_schema = 'silver' AND table_name = 'crm_account'
+ORDER BY ordinal_position;
+
+-- crm_account - TEST 6 - Reconciliation Bronze / Silver.
+-- ecart_brut = versions anterieures ou doublons ecartes + lignes sans cle ; ecart_inexplique attendu : 0
+-- Attendu (lot de test) : silver_rows = 1
+SELECT bronze_rows, bronze_cles_distinctes, lignes_sans_cle, silver_rows,
+       bronze_rows - silver_rows            AS ecart_brut,
+       bronze_cles_distinctes - silver_rows AS ecart_inexplique
+FROM (
+  SELECT
+    (SELECT COUNT(*) FROM bronze.account) AS bronze_rows,
+    (SELECT COUNT(DISTINCT NULLIF(TRIM(id), '')) FROM bronze.account WHERE NULLIF(TRIM(id), '') IS NOT NULL) AS bronze_cles_distinctes,
+    (SELECT COUNT(*) FROM bronze.account WHERE NULLIF(TRIM(id), '') IS NULL) AS lignes_sans_cle,
+    (SELECT COUNT(*) FROM silver.crm_account) AS silver_rows
+) AS t;
+
+-- crm_account - TEST 7 - Tracabilite. Attendu : 0, 0, 0
+SELECT
+  COUNT(*) FILTER (WHERE source_system IS NULL)    AS source_system_null,
+  COUNT(*) FILTER (WHERE source_record_id IS NULL) AS source_record_id_null,
+  COUNT(*) FILTER (WHERE ingested_at_utc IS NULL)  AS ingested_at_null
+FROM silver.crm_account;
+
+-- crm_account - TEST 8 - Regle metier : nom obligatoire, dates coherentes. Attendu : 0 pour chaque colonne
+SELECT
+  COUNT(*) FILTER (WHERE account_name IS NULL)                                AS nom_manquant,
+  COUNT(*) FILTER (WHERE created_at_utc IS NULL OR modified_at_utc IS NULL)   AS date_manquante,
+  COUNT(*) FILTER (WHERE modified_at_utc < created_at_utc)                    AS modification_avant_creation,
+  COUNT(*) FILTER (WHERE created_at_utc > NOW())                              AS creation_dans_le_futur
+FROM silver.crm_account;
+
+-- ===========================================================================
+-- silver.crm_contact  (source : bronze.contact ; cle : contact_id)
+-- ===========================================================================
+
+-- crm_contact - TEST 1 - Cle non nulle. Attendu : 0
+SELECT COUNT(*) AS cles_nulles
+FROM silver.crm_contact
+WHERE contact_id IS NULL;
+
+-- crm_contact - TEST 2 - Unicite de la cle au grain annonce. Attendu : 0 ligne
+SELECT contact_id, COUNT(*) AS n
+FROM silver.crm_contact
+GROUP BY contact_id
+HAVING COUNT(*) > 1;
+
+-- crm_contact - TEST 3 - Doublons : quantifies en Bronze, nuls en Silver. Attendu : doublons_silver = 0
+SELECT
+  (SELECT COUNT(*) - COUNT(DISTINCT NULLIF(TRIM(id), '')) FROM bronze.contact WHERE NULLIF(TRIM(id), '') IS NOT NULL) AS doublons_bronze,
+  (SELECT COUNT(*) - COUNT(DISTINCT contact_id) FROM silver.crm_contact) AS doublons_silver;
+
+-- crm_contact - TEST 4 - Nommage snake_case. Attendu : 0 ligne
+SELECT column_name
+FROM information_schema.columns
+WHERE table_schema = 'silver' AND table_name = 'crm_contact'
+  AND column_name !~ '^[a-z][a-z0-9_]*$';
+
+-- crm_contact - TEST 5 - Types observes (contrat : contact_id, first_name, last_name, account_id text ; is_deleted boolean ; dates timestamp with time zone)
+SELECT column_name, data_type
+FROM information_schema.columns
+WHERE table_schema = 'silver' AND table_name = 'crm_contact'
+ORDER BY ordinal_position;
+
+-- crm_contact - TEST 6 - Reconciliation Bronze / Silver.
+-- ecart_brut = versions anterieures ou doublons ecartes + lignes sans cle ; ecart_inexplique attendu : 0
+-- Attendu (lot de test) : silver_rows = 2
+SELECT bronze_rows, bronze_cles_distinctes, lignes_sans_cle, silver_rows,
+       bronze_rows - silver_rows            AS ecart_brut,
+       bronze_cles_distinctes - silver_rows AS ecart_inexplique
+FROM (
+  SELECT
+    (SELECT COUNT(*) FROM bronze.contact) AS bronze_rows,
+    (SELECT COUNT(DISTINCT NULLIF(TRIM(id), '')) FROM bronze.contact WHERE NULLIF(TRIM(id), '') IS NOT NULL) AS bronze_cles_distinctes,
+    (SELECT COUNT(*) FROM bronze.contact WHERE NULLIF(TRIM(id), '') IS NULL) AS lignes_sans_cle,
+    (SELECT COUNT(*) FROM silver.crm_contact) AS silver_rows
+) AS t;
+
+-- crm_contact - TEST 7 - Tracabilite. Attendu : 0, 0, 0
+SELECT
+  COUNT(*) FILTER (WHERE source_system IS NULL)    AS source_system_null,
+  COUNT(*) FILTER (WHERE source_record_id IS NULL) AS source_record_id_null,
+  COUNT(*) FILTER (WHERE ingested_at_utc IS NULL)  AS ingested_at_null
+FROM silver.crm_contact;
+
+-- crm_contact - TEST 8 - Regle metier : nom obligatoire, compte rattache existant en Silver, dates coherentes. Attendu : 0 pour chaque colonne
+SELECT
+  COUNT(*) FILTER (WHERE c.last_name IS NULL)                                      AS nom_manquant,
+  COUNT(*) FILTER (WHERE c.account_id IS NOT NULL AND a.account_id IS NULL)        AS compte_introuvable,
+  COUNT(*) FILTER (WHERE c.modified_at_utc < c.created_at_utc)                     AS modification_avant_creation
+FROM silver.crm_contact AS c
+LEFT JOIN silver.crm_account AS a ON a.account_id = c.account_id;
+
+-- ===========================================================================
+-- silver.crm_opportunity  (source : bronze.opportunity ; cle : opportunity_id)
+-- ===========================================================================
+
+-- crm_opportunity - TEST 1 - Cle non nulle. Attendu : 0
+SELECT COUNT(*) AS cles_nulles
+FROM silver.crm_opportunity
+WHERE opportunity_id IS NULL;
+
+-- crm_opportunity - TEST 2 - Unicite de la cle au grain annonce. Attendu : 0 ligne
+SELECT opportunity_id, COUNT(*) AS n
+FROM silver.crm_opportunity
+GROUP BY opportunity_id
+HAVING COUNT(*) > 1;
+
+-- crm_opportunity - TEST 3 - Doublons : quantifies en Bronze, nuls en Silver. Attendu : doublons_silver = 0
+SELECT
+  (SELECT COUNT(*) - COUNT(DISTINCT NULLIF(TRIM(id), '')) FROM bronze.opportunity WHERE NULLIF(TRIM(id), '') IS NOT NULL) AS doublons_bronze,
+  (SELECT COUNT(*) - COUNT(DISTINCT opportunity_id) FROM silver.crm_opportunity) AS doublons_silver;
+
+-- crm_opportunity - TEST 4 - Nommage snake_case. Attendu : 0 ligne
+SELECT column_name
+FROM information_schema.columns
+WHERE table_schema = 'silver' AND table_name = 'crm_opportunity'
+  AND column_name !~ '^[a-z][a-z0-9_]*$';
+
+-- crm_opportunity - TEST 5 - Types observes (contrat : identifiants et libelles text ; amount numeric ; probability integer ; close_date date ; is_deleted boolean ; dates timestamp with time zone)
+SELECT column_name, data_type
+FROM information_schema.columns
+WHERE table_schema = 'silver' AND table_name = 'crm_opportunity'
+ORDER BY ordinal_position;
+
+-- crm_opportunity - TEST 6 - Reconciliation Bronze / Silver.
+-- ecart_brut = versions anterieures ou doublons ecartes + lignes sans cle ; ecart_inexplique attendu : 0
+-- Attendu (lot de test) : silver_rows = 1
+SELECT bronze_rows, bronze_cles_distinctes, lignes_sans_cle, silver_rows,
+       bronze_rows - silver_rows            AS ecart_brut,
+       bronze_cles_distinctes - silver_rows AS ecart_inexplique
+FROM (
+  SELECT
+    (SELECT COUNT(*) FROM bronze.opportunity) AS bronze_rows,
+    (SELECT COUNT(DISTINCT NULLIF(TRIM(id), '')) FROM bronze.opportunity WHERE NULLIF(TRIM(id), '') IS NOT NULL) AS bronze_cles_distinctes,
+    (SELECT COUNT(*) FROM bronze.opportunity WHERE NULLIF(TRIM(id), '') IS NULL) AS lignes_sans_cle,
+    (SELECT COUNT(*) FROM silver.crm_opportunity) AS silver_rows
+) AS t;
+
+-- crm_opportunity - TEST 7 - Tracabilite. Attendu : 0, 0, 0
+SELECT
+  COUNT(*) FILTER (WHERE source_system IS NULL)    AS source_system_null,
+  COUNT(*) FILTER (WHERE source_record_id IS NULL) AS source_record_id_null,
+  COUNT(*) FILTER (WHERE ingested_at_utc IS NULL)  AS ingested_at_null
+FROM silver.crm_opportunity;
+
+-- crm_opportunity - TEST 8 - Regle metier : montant >= 0, probabilite entre 0 et 100, etape dans le domaine EspoCRM, compte existant. Attendu : 0 pour chaque colonne
+SELECT
+  COUNT(*) FILTER (WHERE o.amount < 0)                                             AS montant_negatif,
+  COUNT(*) FILTER (WHERE o.probability < 0 OR o.probability > 100)                 AS probabilite_hors_bornes,
+  COUNT(*) FILTER (WHERE o.stage IS NULL OR o.stage NOT IN
+        ('Prospecting', 'Qualification', 'Proposal', 'Negotiation', 'Closed Won', 'Closed Lost')) AS etape_hors_domaine,
+  COUNT(*) FILTER (WHERE o.account_id IS NOT NULL AND a.account_id IS NULL)        AS compte_introuvable,
+  COUNT(*) FILTER (WHERE o.close_date IS NULL)                                     AS date_de_cloture_manquante
+FROM silver.crm_opportunity AS o
+LEFT JOIN silver.crm_account AS a ON a.account_id = o.account_id;
+
+-- ===========================================================================
+-- silver.crm_account_contact  (source : bronze.account_contact ; cle : account_id, contact_id)
+-- ===========================================================================
+
+-- crm_account_contact - TEST 1 - Cle non nulle. Attendu : 0
+SELECT COUNT(*) AS cles_nulles
+FROM silver.crm_account_contact
+WHERE account_id IS NULL OR contact_id IS NULL;
+
+-- crm_account_contact - TEST 2 - Unicite de la cle au grain annonce. Attendu : 0 ligne
+SELECT account_id, contact_id, COUNT(*) AS n
+FROM silver.crm_account_contact
+GROUP BY account_id, contact_id
+HAVING COUNT(*) > 1;
+
+-- crm_account_contact - TEST 3 - Doublons : quantifies en Bronze, nuls en Silver. Attendu : doublons_silver = 0
+SELECT
+  (SELECT COUNT(*) - COUNT(DISTINCT (NULLIF(TRIM(account_id), ''), NULLIF(TRIM(contact_id), ''))) FROM bronze.account_contact WHERE NULLIF(TRIM(account_id), '') IS NOT NULL AND NULLIF(TRIM(contact_id), '') IS NOT NULL) AS doublons_bronze,
+  (SELECT COUNT(*) - COUNT(DISTINCT (account_id, contact_id)) FROM silver.crm_account_contact) AS doublons_silver;
+
+-- crm_account_contact - TEST 4 - Nommage snake_case. Attendu : 0 ligne
+SELECT column_name
+FROM information_schema.columns
+WHERE table_schema = 'silver' AND table_name = 'crm_account_contact'
+  AND column_name !~ '^[a-z][a-z0-9_]*$';
+
+-- crm_account_contact - TEST 5 - Types observes (contrat : account_id, contact_id, contact_role, source_record_id text ; is_inactive, is_deleted boolean ; ingested_at_utc timestamp with time zone)
+SELECT column_name, data_type
+FROM information_schema.columns
+WHERE table_schema = 'silver' AND table_name = 'crm_account_contact'
+ORDER BY ordinal_position;
+
+-- crm_account_contact - TEST 6 - Reconciliation Bronze / Silver.
+-- ecart_brut = versions anterieures ou doublons ecartes + lignes sans cle ; ecart_inexplique attendu : 0
+-- Attendu (lot de test) : silver_rows = 2
+SELECT bronze_rows, bronze_cles_distinctes, lignes_sans_cle, silver_rows,
+       bronze_rows - silver_rows            AS ecart_brut,
+       bronze_cles_distinctes - silver_rows AS ecart_inexplique
+FROM (
+  SELECT
+    (SELECT COUNT(*) FROM bronze.account_contact) AS bronze_rows,
+    (SELECT COUNT(DISTINCT (NULLIF(TRIM(account_id), ''), NULLIF(TRIM(contact_id), ''))) FROM bronze.account_contact WHERE NULLIF(TRIM(account_id), '') IS NOT NULL AND NULLIF(TRIM(contact_id), '') IS NOT NULL) AS bronze_cles_distinctes,
+    (SELECT COUNT(*) FROM bronze.account_contact WHERE NULLIF(TRIM(account_id), '') IS NULL OR NULLIF(TRIM(contact_id), '') IS NULL) AS lignes_sans_cle,
+    (SELECT COUNT(*) FROM silver.crm_account_contact) AS silver_rows
+) AS t;
+
+-- crm_account_contact - TEST 7 - Tracabilite. Attendu : 0, 0, 0
+SELECT
+  COUNT(*) FILTER (WHERE source_system IS NULL)    AS source_system_null,
+  COUNT(*) FILTER (WHERE source_record_id IS NULL) AS source_record_id_null,
+  COUNT(*) FILTER (WHERE ingested_at_utc IS NULL)  AS ingested_at_null
+FROM silver.crm_account_contact;
+
+-- crm_account_contact - TEST 8 - Regle metier : integrite des liens : le compte et le contact existent en Silver. Attendu : 0, 0
+SELECT
+  COUNT(*) FILTER (WHERE a.account_id IS NULL)  AS compte_introuvable,
+  COUNT(*) FILTER (WHERE c.contact_id IS NULL)  AS contact_introuvable
+FROM silver.crm_account_contact AS r
+LEFT JOIN silver.crm_account AS a ON a.account_id = r.account_id
+LEFT JOIN silver.crm_contact AS c ON c.contact_id = r.contact_id;
+
+-- ===========================================================================
+-- silver.crm_contact_opportunity  (source : bronze.contact_opportunity ; cle : contact_id, opportunity_id)
+-- ===========================================================================
+
+-- crm_contact_opportunity - TEST 1 - Cle non nulle. Attendu : 0
+SELECT COUNT(*) AS cles_nulles
+FROM silver.crm_contact_opportunity
+WHERE contact_id IS NULL OR opportunity_id IS NULL;
+
+-- crm_contact_opportunity - TEST 2 - Unicite de la cle au grain annonce. Attendu : 0 ligne
+SELECT contact_id, opportunity_id, COUNT(*) AS n
+FROM silver.crm_contact_opportunity
+GROUP BY contact_id, opportunity_id
+HAVING COUNT(*) > 1;
+
+-- crm_contact_opportunity - TEST 3 - Doublons : quantifies en Bronze, nuls en Silver. Attendu : doublons_silver = 0
+SELECT
+  (SELECT COUNT(*) - COUNT(DISTINCT (NULLIF(TRIM(contact_id), ''), NULLIF(TRIM(opportunity_id), ''))) FROM bronze.contact_opportunity WHERE NULLIF(TRIM(contact_id), '') IS NOT NULL AND NULLIF(TRIM(opportunity_id), '') IS NOT NULL) AS doublons_bronze,
+  (SELECT COUNT(*) - COUNT(DISTINCT (contact_id, opportunity_id)) FROM silver.crm_contact_opportunity) AS doublons_silver;
+
+-- crm_contact_opportunity - TEST 4 - Nommage snake_case. Attendu : 0 ligne
+SELECT column_name
+FROM information_schema.columns
+WHERE table_schema = 'silver' AND table_name = 'crm_contact_opportunity'
+  AND column_name !~ '^[a-z][a-z0-9_]*$';
+
+-- crm_contact_opportunity - TEST 5 - Types observes (contrat : contact_id, opportunity_id, contact_role, source_record_id text ; is_deleted boolean ; ingested_at_utc timestamp with time zone)
+SELECT column_name, data_type
+FROM information_schema.columns
+WHERE table_schema = 'silver' AND table_name = 'crm_contact_opportunity'
+ORDER BY ordinal_position;
+
+-- crm_contact_opportunity - TEST 6 - Reconciliation Bronze / Silver.
+-- ecart_brut = versions anterieures ou doublons ecartes + lignes sans cle ; ecart_inexplique attendu : 0
+-- Attendu (lot de test) : silver_rows = 2
+SELECT bronze_rows, bronze_cles_distinctes, lignes_sans_cle, silver_rows,
+       bronze_rows - silver_rows            AS ecart_brut,
+       bronze_cles_distinctes - silver_rows AS ecart_inexplique
+FROM (
+  SELECT
+    (SELECT COUNT(*) FROM bronze.contact_opportunity) AS bronze_rows,
+    (SELECT COUNT(DISTINCT (NULLIF(TRIM(contact_id), ''), NULLIF(TRIM(opportunity_id), ''))) FROM bronze.contact_opportunity WHERE NULLIF(TRIM(contact_id), '') IS NOT NULL AND NULLIF(TRIM(opportunity_id), '') IS NOT NULL) AS bronze_cles_distinctes,
+    (SELECT COUNT(*) FROM bronze.contact_opportunity WHERE NULLIF(TRIM(contact_id), '') IS NULL OR NULLIF(TRIM(opportunity_id), '') IS NULL) AS lignes_sans_cle,
+    (SELECT COUNT(*) FROM silver.crm_contact_opportunity) AS silver_rows
+) AS t;
+
+-- crm_contact_opportunity - TEST 7 - Tracabilite. Attendu : 0, 0, 0
+SELECT
+  COUNT(*) FILTER (WHERE source_system IS NULL)    AS source_system_null,
+  COUNT(*) FILTER (WHERE source_record_id IS NULL) AS source_record_id_null,
+  COUNT(*) FILTER (WHERE ingested_at_utc IS NULL)  AS ingested_at_null
+FROM silver.crm_contact_opportunity;
+
+-- crm_contact_opportunity - TEST 8 - Regle metier : integrite des liens : le contact et l'opportunite existent en Silver. Attendu : 0, 0
+SELECT
+  COUNT(*) FILTER (WHERE c.contact_id IS NULL)      AS contact_introuvable,
+  COUNT(*) FILTER (WHERE o.opportunity_id IS NULL)  AS opportunite_introuvable
+FROM silver.crm_contact_opportunity AS r
+LEFT JOIN silver.crm_contact AS c ON c.contact_id = r.contact_id
+LEFT JOIN silver.crm_opportunity AS o ON o.opportunity_id = r.opportunity_id;
+
+-- ===========================================================================
+-- PREUVE DU DELTA CRM en Silver : le compte saisi, son opportunite et les 2 contacts lies.
+-- Attendu : 2 lignes (Alice Test et Bob Test) pour 'Opportunité Test BD' / 'Société Test Big Data'.
+-- (Jointures internes au CRM uniquement : aucun rapprochement avec l'API ou le CSV.)
+-- ===========================================================================
+SELECT a.account_id, a.account_name,
+       o.opportunity_id, o.opportunity_name, o.stage, o.amount,
+       c.contact_id, c.first_name, c.last_name
+FROM silver.crm_account AS a
+JOIN silver.crm_opportunity AS o          ON o.account_id = a.account_id
+JOIN silver.crm_contact_opportunity AS co ON co.opportunity_id = o.opportunity_id AND co.is_deleted IS NOT TRUE
+JOIN silver.crm_contact AS c              ON c.contact_id = co.contact_id
+ORDER BY c.last_name, c.first_name;
